@@ -12,7 +12,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class MetricStreamService {
     private final RedisTemplate<String, String> redisTemplate;
-    private static final String STREAM_KEY = "metric:stream";
+    private static final String STREAM_KEY = "metrics:stream";
 
     public void publish(MetricPayload metricPayload) {
         Map<String, String> fields = new HashMap<>();
