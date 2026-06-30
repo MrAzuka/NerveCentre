@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+//TODO: Add more comments explaining my code. DO FOR THE WHOLE CODE
+
 // MetricStreamConsumer.java
 @Service
 @RequiredArgsConstructor
@@ -23,6 +25,7 @@ public class MetricStreamConsumer {
 
     private final RedisTemplate<String, String> redisTemplate;
     private final MetricRepository metricRepository;
+    private final AnomalyDetectionService anomalyDetectionService;
 
     private static final String STREAM_KEY = "metrics:stream";
     private static final String GROUP_NAME  = "nervecentre-group";
@@ -63,6 +66,8 @@ public class MetricStreamConsumer {
                 metric.setTags(extractTags(fields));
 
                 metricRepository.save(metric);
+                // After saving the metric it will analyze it for any anomaly
+                anomalyDetectionService.analyze(metric.getName(), metric.getValue(), metric.getTime());
 
                 // Acknowledge so the message isn't reprocessed
                 redisTemplate.opsForStream().acknowledge(STREAM_KEY, GROUP_NAME, record.getId());
