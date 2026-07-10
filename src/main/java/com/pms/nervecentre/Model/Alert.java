@@ -39,4 +39,9 @@ public class Alert {
 
     @Column(nullable = false)
     private String severity; // "WARNING" or "CRITICAL"
+
+    // This is for the LLM to add context to the alert
+    private String explanation;
+    private String likelyCause;
+    private String recommendedAction;
 }
