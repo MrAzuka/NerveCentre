@@ -1,10 +1,13 @@
 package com.pms.nervecentre.Config;
 
+import org.springframework.boot.data.redis.autoconfigure.LettuceClientConfigurationBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.time.Duration;
 
 @Configuration
 public class RedisConfig {
@@ -18,5 +21,10 @@ public class RedisConfig {
         redisTemplate.setHashKeySerializer(new StringRedisSerializer());
         redisTemplate.setHashValueSerializer(new StringRedisSerializer());
         return redisTemplate;
+    }
+
+    @Bean
+    public LettuceClientConfigurationBuilderCustomizer lettuceCustomizer() {
+        return builder -> builder.commandTimeout(Duration.ofMinutes(10));
     }
 }

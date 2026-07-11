@@ -47,13 +47,11 @@ public class MetricStreamConsumer {
         List<MapRecord<String, Object, Object>> records =
                 redisTemplate.opsForStream().read(
                         Consumer.from(GROUP_NAME, CONSUMER),
-                        StreamReadOptions.empty().count(10),
+                        StreamReadOptions.empty().count(10).noack(), // non-blocking
                         StreamOffset.create(STREAM_KEY, ReadOffset.lastConsumed())
                 );
 
         if (records == null || records.isEmpty()) return;
-
-
 
         for (MapRecord<String, Object, Object> record : records) {
             try {
