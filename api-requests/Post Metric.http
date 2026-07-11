@@ -4,7 +4,7 @@ Content-Type: application/json
 
 {
   "name": "api_response_time_ms",
-  "value": 999999,
+  "value": 9999991,
   "tags": {"route": "/users"}
 }
 

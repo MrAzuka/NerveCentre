@@ -16,8 +16,9 @@ import java.util.Map;
 @Service
 @Slf4j
 public class LlmExplanationService {
-    @Value("${deepseek.api.key}")
-    private String apiKey;
+    @Value("${ollama.base.url}")
+    private String ollamaBaseUrl;
+
 
     private final RestClient restClient = RestClient.create();
 
@@ -74,25 +75,23 @@ public class LlmExplanationService {
     }
 
 
-    // Actually makes the call to the DeepSeek API. P
+    // Actually makes the call to the Ollama
     private String callLlm(String prompt) {
         Map<String, Object> body = new HashMap<>();
-        body.put("model", "deepseek-chat");
-        body.put("max_tokens", 512);
+        body.put("model", "llama3.2");
+        body.put("stream", false);
         body.put("messages", List.of(
                 Map.of("role", "user", "content", prompt)
         ));
 
         Map<String, Object> response = restClient.post()
-                .uri("https://api.deepseek.com/chat/completions")
-                .header("Authorization", "Bearer " + apiKey)
+                .uri(ollamaBaseUrl + "/api/chat")
                 .header("Content-Type", "application/json")
                 .body(body)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});
 
-        List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-        Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+        Map<String, Object> message = (Map<String, Object>) response.get("message");
         return message.get("content").toString();
     }
 
