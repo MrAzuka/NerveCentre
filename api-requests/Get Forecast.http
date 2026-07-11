@@ -1,0 +1,7 @@
+### GET basic forecast
+GET http://localhost:8080/forecast/cpu_usage
+
+### GET forecast with proactive alert
+GET http://localhost:8080/forecast/cpu_usage?threshold=80
+
+###
