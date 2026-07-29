@@ -14,3 +14,5 @@ spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 
 # Ollama
 ollama.base.url=${OLLAMA_BASE_URL:http://localhost:11434}
+
+simulator.enabled=true
