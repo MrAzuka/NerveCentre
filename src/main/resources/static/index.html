@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NerveCentre — Live Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0f1117;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', sans-serif;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #1a1d27;
+            border-bottom: 1px solid #2d3748;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #63b3ed;
+            letter-spacing: 1px;
+        }
+
+        #connection-status {
+            font-size: 13px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: #2d3748;
+            color: #a0aec0;
+        }
+
+        #connection-status.connected {
+            background: #1a3a2a;
+            color: #68d391;
+        }
+
+        .main {
+            padding: 24px 32px;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #718096;
+            margin-bottom: 12px;
+        }
+
+        /* Metric Cards */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: #1a1d27;
+            border: 1px solid #2d3748;
+            border-radius: 10px;
+            padding: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .metric-card.spiked {
+            border-color: #fc8181;
+            box-shadow: 0 0 12px rgba(252, 129, 129, 0.2);
+        }
+
+        .metric-card .metric-name {
+            font-size: 11px;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .metric-card .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #63b3ed;
+        }
+
+        .metric-card .metric-unit {
+            font-size: 12px;
+            color: #4a5568;
+            margin-top: 4px;
+        }
+
+        /* Chart */
+        .chart-container {
+            background: #1a1d27;
+            border: 1px solid #2d3748;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .chart-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .chart-btn {
+            background: #2d3748;
+            border: none;
+            color: #a0aec0;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chart-btn.active {
+            background: #63b3ed;
+            color: #0f1117;
+            font-weight: 600;
+        }
+
+        canvas { max-height: 250px; }
+
+        /* Alerts Panel */
+        .alerts-panel {
+            background: #1a1d27;
+            border: 1px solid #2d3748;
+            border-radius: 10px;
+            padding: 20px;
+            height: fit-content;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .alert-item {
+            background: #0f1117;
+            border-left: 3px solid #fc8181;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .alert-item.WARNING {
+            border-left-color: #f6ad55;
+        }
+
+        .alert-item.CRITICAL {
+            border-left-color: #fc8181;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(10px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .alert-metric {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .alert-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .alert-badge.WARNING  { background: #744210; color: #f6ad55; }
+        .alert-badge.CRITICAL { background: #742a2a; color: #fc8181; }
+
+        .alert-value {
+            font-size: 12px;
+            color: #a0aec0;
+            margin-bottom: 4px;
+        }
+
+        .alert-explanation {
+            font-size: 11px;
+            color: #718096;
+            font-style: italic;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        .alert-time {
+            font-size: 10px;
+            color: #4a5568;
+            margin-top: 4px;
+        }
+
+        .no-alerts {
+            text-align: center;
+            color: #4a5568;
+            font-size: 13px;
+            padding: 40px 0;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>⚡ NerveCentre</h1>
+    <span id="connection-status">Connecting...</span>
+</header>
+
+<div class="main">
+    <div>
+        <p class="section-title">Live Metrics</p>
+        <div class="metrics-grid" id="metrics-grid"></div>
+
+        <div class="chart-container">
+            <p class="section-title">Metric History</p>
+            <div class="chart-selector" id="chart-selector"></div>
+            <canvas id="metricChart"></canvas>
+        </div>
+    </div>
+
+    <div>
+        <p class="section-title">Live Alerts</p>
+        <div class="alerts-panel" id="alerts-panel">
+            <p class="no-alerts">No alerts yet — system is healthy</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── State ──────────────────────────────────────────
+    const metricHistory = {};
+    const MAX_POINTS = 30;
+    let activeMetric = null;
+    let chart = null;
+
+    // ── Chart setup ────────────────────────────────────
+    function initChart() {
+        const ctx = document.getElementById('metricChart').getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [{
+                    label: '',
+                    data: [],
+                    borderColor: '#63b3ed',
+                    backgroundColor: 'rgba(99,179,237,0.08)',
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    tension: 0.4,
+                    fill: true
+                }]},
+            options: {
+                responsive: true,
+                animation: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#4a5568', maxTicksLimit: 8 }, grid: { color: '#1a1d27' } },
+                    y: { ticks: { color: '#4a5568' }, grid: { color: '#2d3748' } }
+                }
+            }
+        });
+    }
+
+    function updateChart(metricName) {
+        if (!chart || !metricHistory[metricName]) return;
+        activeMetric = metricName;
+        const history = metricHistory[metricName];
+        chart.data.labels = history.map(p => new Date(p.time).toLocaleTimeString());
+        chart.data.datasets[0].data = history.map(p => p.value);
+        chart.data.datasets[0].label = metricName;
+        chart.update();
+
+        // Update button states
+        document.querySelectorAll('.chart-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.metric === metricName);
+        });
+    }
+
+    // ── Metric card ────────────────────────────────────
+    function updateMetricCard(metricName, value) {
+        let card = document.getElementById('card-' + metricName);
+
+        if (!card) {
+            // Create card
+            card = document.createElement('div');
+            card.className = 'metric-card';
+            card.id = 'card-' + metricName;
+            card.innerHTML = `
+        <div class="metric-name">${metricName.replace(/_/g, ' ')}</div>
+        <div class="metric-value" id="val-${metricName}">-</div>
+        <div class="metric-unit">latest value</div>
+      `;
+            document.getElementById('metrics-grid').appendChild(card);
+
+            // Add chart button
+            const btn = document.createElement('button');
+            btn.className = 'chart-btn';
+            btn.dataset.metric = metricName;
+            btn.textContent = metricName.replace(/_/g, ' ');
+            btn.onclick = () => updateChart(metricName);
+            document.getElementById('chart-selector').appendChild(btn);
+
+            // Auto-select first metric
+            if (!activeMetric) updateChart(metricName);
+        }
+
+        document.getElementById('val-' + metricName).textContent =
+            parseFloat(value).toFixed(2);
+    }
+
+    // ── Alert card ─────────────────────────────────────
+    function addAlert(alert) {
+        const panel = document.getElementById('alerts-panel');
+        const noAlerts = panel.querySelector('.no-alerts');
+        if (noAlerts) noAlerts.remove();
+
+        // Flash the metric card red
+        const card = document.getElementById('card-' + alert.metricName);
+        if (card) {
+            card.classList.add('spiked');
+            setTimeout(() => card.classList.remove('spiked'), 3000);
+        }
+
+        const item = document.createElement('div');
+        item.className = `alert-item ${alert.severity}`;
+        item.innerHTML = `
+      <div class="alert-header">
+        <span class="alert-metric">${alert.metricName.replace(/_/g, ' ')}</span>
+        <span class="alert-badge ${alert.severity}">${alert.severity}</span>
+      </div>
+      <div class="alert-value">
+        Value: <strong>${parseFloat(alert.value).toFixed(2)}</strong>
+        &nbsp;·&nbsp; Z-score: <strong>${parseFloat(alert.zScore).toFixed(2)}</strong>
+      </div>
+      ${alert.explanation
+            ? `<div class="alert-explanation">${alert.explanation}</div>`
+            : ''}
+      <div class="alert-time">${new Date(alert.time).toLocaleTimeString()}</div>
+    `;
+
+        panel.insertBefore(item, panel.firstChild);
+
+        // Keep only last 20 alerts in the panel
+        const items = panel.querySelectorAll('.alert-item');
+        if (items.length > 20) items[items.length - 1].remove();
+    }
+
+    // ── WebSocket ──────────────────────────────────────
+    function connect() {
+        const socket = new SockJS('/ws');
+        const stompClient = Stomp.over(socket);
+        stompClient.debug = null; // silence console noise
+
+        stompClient.connect({}, () => {
+            document.getElementById('connection-status').textContent = 'Connected';
+            document.getElementById('connection-status').classList.add('connected');
+
+            // Subscribe to metrics
+            stompClient.subscribe('/topic/metrics', message => {
+                const data = JSON.parse(message.body);
+
+                if (!metricHistory[data.metricName]) {
+                    metricHistory[data.metricName] = [];
+                }
+
+                metricHistory[data.metricName].push({
+                    time: data.time,
+                    value: data.value
+                });
+
+                // Keep only last 30 points
+                if (metricHistory[data.metricName].length > MAX_POINTS) {
+                    metricHistory[data.metricName].shift();
+                }
+
+                updateMetricCard(data.metricName, data.value);
+
+                if (activeMetric === data.metricName) {
+                    updateChart(data.metricName);
+                }
+            });
+
+            // Subscribe to alerts
+            stompClient.subscribe('/topic/alerts', message => {
+                const alert = JSON.parse(message.body);
+                addAlert(alert);
+            });
+
+        }, error => {
+            document.getElementById('connection-status').textContent = 'Disconnected';
+            document.getElementById('connection-status').classList.remove('connected');
+            // Reconnect after 3 seconds
+            setTimeout(connect, 3000);
+        });
+    }
+
+    // ── Init ───────────────────────────────────────────
+    initChart();
+    connect();
+</script>
+</body>
+</html>
