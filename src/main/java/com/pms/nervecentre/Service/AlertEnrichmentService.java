@@ -15,12 +15,14 @@ import java.util.List;
 public class AlertEnrichmentService {
     private final LlmExplanationService llmExplanationService;
     private final AlertRepository alertRepository;
+    private final DashboardPublisher dashboardPublisher;
 
     @Async
     public void enrichAsync(Alert alert, List<Double> recentValues) {
         log.info("Starting LLM enrichment for alert {}", alert.getId());
         llmExplanationService.enrich(alert, recentValues);
         alertRepository.save(alert);
+        dashboardPublisher.publishAlert(alert);
         log.info("LLM enrichment complete for alert {} — {}", alert.getId(), alert.getExplanation());
     }
 }

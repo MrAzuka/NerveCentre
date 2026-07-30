@@ -33,7 +33,7 @@ public class AnomalyDetectionService {
     private final AlertRepository alertRepository;
     private final MetricRepository metricRepository;
     private final AlertEnrichmentService alertEnrichmentService;
-    private final DashboardPublisher dashboardPublisher;
+    // private final DashboardPublisher dashboardPublisher;
 
     // Number of most recent data points to use as the baseline window for mean/stddev
     private static final int WINDOW_SIZE = 20;   // look at last 20 data points
@@ -94,8 +94,10 @@ public class AnomalyDetectionService {
             // save first to get an ID
             alertRepository.save(alert);
 
-            // Publish to Live Dashboard
-            dashboardPublisher.publishAlert(alert);
+            // Publish to Live Dashboard is commented out here because it is publishing the alert before the llm
+            // has gotten the chance to add the explanation. It will now be at the AlertEnrichmentService to be published
+            // after the explanation. ( The trade-off is a 5-30 seconds delay in the publishing of critical alerts)
+            //dashboardPublisher.publishAlert(alert);
 
             // Fire and forget doesn't block the consumer
             alertEnrichmentService.enrichAsync(alert, values);
