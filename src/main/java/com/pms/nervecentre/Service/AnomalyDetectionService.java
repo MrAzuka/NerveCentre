@@ -33,6 +33,7 @@ public class AnomalyDetectionService {
     private final AlertRepository alertRepository;
     private final MetricRepository metricRepository;
     private final AlertEnrichmentService alertEnrichmentService;
+    private final DashboardPublisher dashboardPublisher;
 
     // Number of most recent data points to use as the baseline window for mean/stddev
     private static final int WINDOW_SIZE = 20;   // look at last 20 data points
@@ -92,6 +93,9 @@ public class AnomalyDetectionService {
 
             // save first to get an ID
             alertRepository.save(alert);
+
+            // Publish to Live Dashboard
+            dashboardPublisher.publishAlert(alert);
 
             // Fire and forget doesn't block the consumer
             alertEnrichmentService.enrichAsync(alert, values);

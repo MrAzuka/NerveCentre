@@ -26,6 +26,7 @@ public class MetricStreamConsumer {
     private final RedisTemplate<String, String> redisTemplate;
     private final MetricRepository metricRepository;
     private final AnomalyDetectionService anomalyDetectionService;
+    private final DashboardPublisher dashboardPublisher;
 
     private static final String STREAM_KEY = "metrics:stream";
     private static final String GROUP_NAME  = "nervecentre-group";
@@ -64,6 +65,8 @@ public class MetricStreamConsumer {
                 metric.setTags(extractTags(fields));
 
                 metricRepository.save(metric);
+                // Publish to the live dashboard
+                dashboardPublisher.publishMetric(metric.getName(), metric.getValue(), metric.getTime());
                 // After saving the metric it will analyze it for any anomaly
                 anomalyDetectionService.analyze(metric.getName(), metric.getValue(), metric.getTime());
 
