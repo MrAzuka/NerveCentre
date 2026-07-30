@@ -1,0 +1,21 @@
+## Get All Alerts
+GET http://localhost:8080/alerts
+###
+## Only CRITICAL alerts
+GET http://localhost:8080/alerts?severity=CRITICAL
+
+###
+## Only WARNING alerts
+GET http://localhost:8080/alerts?severity=WARNING
+
+###
+## Alerts for a specific metric
+GET http://localhost:8080/alerts?metricName=cpu_usage_percent
+
+###
+## Combine filters
+GET http://localhost:8080/alerts?severity=CRITICAL&metricName=api_response_time_ms
+
+###
+## Pagination — page 2, 10 per page
+GET http://localhost:8080/alerts?page=1&size=10
