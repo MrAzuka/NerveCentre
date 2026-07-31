@@ -5,8 +5,11 @@ import com.pms.nervecentre.Model.Alert;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 
 @Repository
@@ -26,4 +29,10 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
     Page<Alert> findBySeverityAndMetricNameOrderByTimeDesc(
             String severity, String metricName, Pageable pageable
     );
+
+    // checks if a metric is still in cooldown
+    @Query("SELECT COUNT(a) > 0 FROM Alert a WHERE a.metricName = :metricName " +
+            "AND a.cooldownExpiresAt > :now")
+    boolean isInCooldown(@Param("metricName") String metricName,
+                         @Param("now") Instant now);
 }

@@ -6,9 +6,11 @@ import com.pms.nervecentre.Repository.AlertRepository;
 import com.pms.nervecentre.Repository.MetricRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,6 +43,9 @@ public class AnomalyDetectionService {
     // Z-score thresholds that determine alert severity
     private static final double WARNING_THRESHOLD  = 2.0; // ~95% confidence interval
     private static final double CRITICAL_THRESHOLD = 3.0; // ~99.7% confidence interval
+
+    @Value("${alerts.cooldown.minutes}")
+    private int cooldownMinutes; // set cooldown to X minutes
 
 
     public void analyze(String metricName, Double currentValue, Instant time) {
@@ -80,6 +85,15 @@ public class AnomalyDetectionService {
                 String.format("%.2f", stddev));
 
         if (zScore >= WARNING_THRESHOLD) {
+
+            // Check cooldown before firing
+            // If the same metric has raised a critical or warning alert in the last 5 minutes
+            // It won't send another, so that the alerts to get duplicated and congested
+            if (alertRepository.isInCooldown(metricName, Instant.now())) {
+                log.info("SUPPRESSED alert for {} — still in cooldown window", metricName);
+                return;
+            }
+
             String severity = zScore >= CRITICAL_THRESHOLD ? "CRITICAL" : "WARNING";
 
             Alert alert = new Alert();
@@ -90,6 +104,9 @@ public class AnomalyDetectionService {
             alert.setMean(mean);
             alert.setStddev(stddev);
             alert.setSeverity(severity);
+            alert.setCooldownExpiresAt(
+                    Instant.now().plus(cooldownMinutes, ChronoUnit.MINUTES)
+            );
 
             // save first to get an ID
             alertRepository.save(alert);
@@ -102,8 +119,8 @@ public class AnomalyDetectionService {
             // Fire and forget doesn't block the consumer
             alertEnrichmentService.enrichAsync(alert, values);
 
-            log.warn("ALERT [{}] {} spiked to {} (Z-score: {})",
-                    severity, metricName, currentValue, String.format("%.2f", zScore));
+            log.warn("ALERT [{}] {} spiked to {} (Z-score: {} — cooldown set for {} minutes)",
+                    severity, metricName, currentValue, String.format("%.2f", zScore), cooldownMinutes);
         }
     }
 

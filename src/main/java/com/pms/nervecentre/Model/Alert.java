@@ -44,4 +44,7 @@ public class Alert {
     private String explanation;
     private String likelyCause;
     private String recommendedAction;
+
+    @Column(name = "cooldown_expires_at")
+    private Instant cooldownExpiresAt;
 }
