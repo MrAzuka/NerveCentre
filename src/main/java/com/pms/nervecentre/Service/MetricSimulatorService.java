@@ -2,7 +2,6 @@ package com.pms.nervecentre.Service;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -11,8 +10,10 @@ import org.springframework.web.client.RestClient;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-@ConditionalOnProperty(name = "simulator.enabled", havingValue = "true")
+// Rather than have a hard coded simulator, i am making it toggable
+// The simulator can be switched on and off
 @Service
 @Slf4j
 public class MetricSimulatorService {
@@ -20,6 +21,8 @@ public class MetricSimulatorService {
     private final Random random = new Random();
 
     private static final String METRICS_URL = "http://localhost:8080/metrics";
+
+    private final AtomicBoolean running = new AtomicBoolean(true);
 
     // Simulated metrics with their normal ranges
     private static final Map<String, double[]> METRIC_RANGES = Map.of(
@@ -32,10 +35,28 @@ public class MetricSimulatorService {
 
     @Scheduled(fixedDelay = 5000) // every 5 seconds
     public void simulate() {
+        if(!running.get()) return;
+
         METRIC_RANGES.forEach((metricName, range) -> {
             double value = generateValue(metricName, range);
             sendMetric(metricName, value);
         });
+    }
+
+    public boolean toggle() {
+        boolean newState = !running.get();
+        running.set(newState);
+        log.info("MetricSimulator toggled — running={}", newState);
+        return newState;
+    }
+
+    public boolean isRunning() {
+        return running.get();
+    }
+
+    public void setRunning(boolean state) {
+        running.set(state);
+        log.info("MetricSimulator set to running={}", state);
     }
 
     private double generateValue(String metricName, double[] range) {
@@ -70,10 +91,6 @@ public class MetricSimulatorService {
                     .body(payload)
                     .retrieve()
                     .toBodilessEntity();
-
-            log.info("Simulated {} = {}", metricName,
-                    String.format("%.2f", value));
-
         } catch (Exception e) {
             log.error("Simulator failed to send {}: {}", metricName, e.getMessage());
         }
@@ -81,8 +98,6 @@ public class MetricSimulatorService {
 
     @PostConstruct
     public void init() {
-        log.info("MetricSimulator started — sending {} metrics every 5 seconds with 10% spike probability",
-                METRIC_RANGES.size());
-        log.info("Simulating: {}", METRIC_RANGES.keySet());
+        log.info("MetricSimulator started — running={}", running.get());
     }
 }

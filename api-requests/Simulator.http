@@ -1,0 +1,14 @@
+# Check current status
+GET http://localhost:8080/simulator/status
+
+###
+# Toggle on/off
+POST http://localhost:8080/simulator/toggle
+
+###
+# Explicitly stop
+POST http://localhost:8080/simulator/stop
+
+###
+# Explicitly start
+POST http://localhost:8080/simulator/start

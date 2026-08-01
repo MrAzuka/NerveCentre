@@ -87,6 +87,33 @@
             border-color: rgba(34,197,94,0.25);
             color: #86efac;
         }
+        #simulator-btn {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 8px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.05);
+            color: var(--muted);
+            cursor: pointer;
+            transition: all .25s ease;
+        }
+
+        #simulator-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        #simulator-btn.running {
+            background: rgba(239,68,68,.18);
+            border-color: rgba(239,68,68,.45);
+            color: #fca5a5;
+        }
+
+        #simulator-btn.stopped {
+            background: rgba(34,197,94,.15);
+            border-color: rgba(34,197,94,.35);
+            color: #86efac;
+        }
 
         /* Layout */
         .main {
@@ -328,7 +355,12 @@
 
 <header>
     <h1>NerveCentre</h1>
-    <span id="connection-status">Connecting...</span>
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <button id="simulator-btn" onclick="toggleSimulator()">
+            ⏹ Stop Simulator
+        </button>
+        <span id="connection-status">Connecting...</span>
+    </div>
 </header>
 
 <div class="main">
@@ -357,6 +389,7 @@
     const MAX_POINTS = 30;
     let activeMetric = null;
     let chart = null;
+    let simulatorRunning = true;
 
     // ── Chart setup ────────────────────────────────────
     function initChart() {
@@ -535,6 +568,29 @@
             setTimeout(connect, 3000);
         });
     }
+
+    // ── Toggle Simulator ──────────────────────────────────────
+    async function toggleSimulator() {
+        const res = await fetch('/simulator/toggle', { method: 'POST' });
+        const data = await res.json();
+        simulatorRunning = data.running;
+
+        const btn = document.getElementById('simulator-btn');
+        btn.textContent = simulatorRunning ? '⏹ Stop Simulator' : '▶ Start Simulator';
+        btn.classList.toggle('running', simulatorRunning);
+        btn.classList.toggle('stopped', !simulatorRunning);
+    }
+
+    // Fetch initial status on load
+    fetch('/simulator/status')
+        .then(r => r.json())
+        .then(data => {
+            simulatorRunning = data.running;
+            const btn = document.getElementById('simulator-btn');
+            btn.textContent = simulatorRunning ? '⏹ Stop Simulator' : '▶ Start Simulator';
+            btn.classList.toggle('running', simulatorRunning);
+            btn.classList.toggle('stopped', !simulatorRunning);
+        });
 
     // ── Init ───────────────────────────────────────────
     initChart();
